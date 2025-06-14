@@ -20,50 +20,52 @@ async function callAIService({ prompt }) {
     top_p: 0.95,
   };
 
-  try {
-    const response = await fetch(process.env.OPENAI_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": process.env.OPENAI_API_KEY,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      console.error("Erro da API:", errorData);
-      throw new Error(
-        `Erro da API OpenAI: ${response.status} ${errorData.error?.message || errorData.message || response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-
-    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
-      console.error("Resposta inesperada da API:", data);
-      throw new Error("A API não retornou o conteúdo esperado.");
-    }
-
-    let content = data.choices[0].message.content.trim();
-    content = content.replace(/^```json[\s\n]*|^```[\s\n]*|```$/gim, "").trim();
-
-    content = content.replace(/^```json[\s\n]*|^```[\s\n]*|```$/gim, "").trim();
-    let sections = {};
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      sections = JSON.parse(content);
-    } catch (e) {
-      console.error("Falha ao fazer parse do JSON retornado pela API:", content);
-      throw new Error("O retorno da API não pôde ser interpretado como JSON válido.");
+      const response = await fetch(process.env.OPENAI_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.OPENAI_API_KEY,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        console.error("Erro da API:", errorData);
+        throw new Error(
+          `Erro da API OpenAI: ${response.status} ${errorData.error?.message || errorData.message || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
+        console.error("Resposta inesperada da API:", data);
+        throw new Error("A API não retornou o conteúdo esperado.");
+      }
+
+      let content = data.choices[0].message.content.trim();
+      content = content.replace(/^```json[\s\n]*|^```[\s\n]*|```$/gim, "").trim();
+      let sections = {};
+      try {
+        sections = JSON.parse(content);
+      } catch (e) {
+        console.error("Falha ao fazer parse do JSON retornado pela API (tentativa " + attempt + "):", content);
+        throw new Error("O retorno da API não pôde ser interpretado como JSON válido.");
+      }
+      return { sections };
+    } catch (error) {
+      lastError = error;
+      console.error(`Tentativa ${attempt} falhou:`, error.message);
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt)); // backoff
+      }
     }
-    return { sections };
-  } catch (error) {
-    console.error("Erro ao chamar a API:", error);
-    if (error instanceof Error && error.message.startsWith("Erro da API:")) {
-      throw error;
-    }
-    throw new Error("Falha ao se comunicar com a API. Verifique a conexão e as configurações do endpoint.");
   }
+  throw lastError || new Error("Falha ao se comunicar com a API após 3 tentativas.");
 }
 
 module.exports = { callAIService };
