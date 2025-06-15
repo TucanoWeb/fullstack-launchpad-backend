@@ -8,7 +8,7 @@ async function callAIService({ prompt }) {
       {
         role: "system",
         content:
-          "Você é um assistente de IA especialista em gerar estruturas de projeto (boilerplates) e guias detalhados para desenvolvimento full-stack. O RETORNO DEVE SER EXCLUSIVAMENTE UM JSON VÁLIDO, sem texto antes ou depois.",
+          "Você é um assistente de IA especialista em gerar estruturas de projeto (boilerplates) e guias detalhados para desenvolvimento full-stack.",
       },
       {
         role: "user",
@@ -48,15 +48,15 @@ async function callAIService({ prompt }) {
       }
 
       let content = data.choices[0].message.content.trim();
-      content = content.replace(/^```json[\s\n]*|^```[\s\n]*|```$/gim, "").trim();
-      let sections = {};
-      try {
-        sections = JSON.parse(content);
-      } catch (e) {
-        console.error("Falha ao fazer parse do JSON retornado pela API (tentativa " + attempt + "):", content);
-        throw new Error("O retorno da API não pôde ser interpretado como JSON válido.");
-      }
-      return { sections };
+      content = content.replace(/^```markdown[\s\n]*|^```[\s\n]*|```$/gim, "").trim();
+      // let sections = {};
+      // try {
+      //   sections = JSON.parse(content);
+      // } catch (e) {
+      //   console.error("Falha ao fazer parse do JSON retornado pela API (tentativa " + attempt + "):", content);
+      //   throw new Error("O retorno da API não pôde ser interpretado como JSON válido.");
+      // }
+      return content;
     } catch (error) {
       lastError = error;
       console.error(`Tentativa ${attempt} falhou:`, error.message);
