@@ -48,7 +48,8 @@ async function callAIService({ prompt }) {
       }
 
       let content = data.choices[0].message.content.trim();
-      content = content.replace(/^```markdown[\s\n]*|^```[\s\n]*|```$/gim, "").trim();
+      // Remove apenas bloco de código Markdown, mantendo os outros blocos de código intactos
+      // content = content.replace(/^```markdown[\s\n]*|^```[\s\n]*|```$/gim, "").trim();
       // let sections = {};
       // try {
       //   sections = JSON.parse(content);
